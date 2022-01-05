@@ -6,69 +6,8 @@
 #include "glm.hpp"
 #include "gtc/matrix_transform.hpp"
 #include "Log.h"
-
-class Texture : public GLObject {
-    const char* filename;
-    unsigned int width, height;
-    unsigned int internalFormat, format, pixelType;
-
-public:
-    Texture(int width, int height,
-        unsigned int internalFormat = GL_RGBA, unsigned int format = GL_RGBA, unsigned int pixelType = GL_UNSIGNED_BYTE)
-    {
-        this->width = width;
-        this->height = height;
-        this->internalFormat = internalFormat;
-        this->format = format;
-        this->pixelType = pixelType;
-
-        this->filename = nullptr;
-    }
-    
-    Texture(const char* filename) {
-        this->filename = filename;
-    }
-    
-    int GetWidth() { return width; }
-    int GetHeight() { return height; }
-
-private:
-    void release() {
-        glDeleteTextures(1, &handle);
-        handle = 0;
-    }
-
-    void bind(int slot = 0) {
-        glActiveTexture(GL_TEXTURE0 + slot);
-        glBindTexture(GL_TEXTURE_2D, handle);
-    }
-
-    void initialize() {
-        glGenTextures(1, &handle);
-        bind();
-
-        if (filename == nullptr)
-            glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, pixelType, nullptr);
-        else {
-            //Load image from file
-            width = 69;
-            height = 1337;
-            void* data = nullptr;
-
-            //Upload
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-        }
-
-    }
-};
-
-class Drawable {
-public:
-    virtual void Update(double delta) abstract;
-    virtual void Render() abstract;
-
-    virtual bool OnMouseMove(double x, double y) { return false; }
-};
+#include "Drawable.h"
+#include "Texture.h"
 
 class Player : public Drawable {
 public:
@@ -83,32 +22,7 @@ public:
     }
 
     void Update(double delta) {
-
-    }
-};
-
-template<typename T>
-class VertexArray : public GLObject {
-public:
-    VertexArray()
-    {
-
-    }
-
-    void SetLayout() {
-
-    }
-private:
-    void bind(int slot) {
-        glBindVertexArray(handle);
-    }
-
-    void initialize() {
-        glGenVertexArrays(1, &handle);
-    }
-
-    void release() {
-        glDeleteVertexArrays(1, &handle);
+        
     }
 };
 
@@ -119,8 +33,17 @@ public:
     glm::vec4 Color;
 };
 
+void drawQuad(float x, float y, float width, float height) {
+    glVertex2f(x, y);
+    glVertex2f(width + x, y);
+    glVertex2f(width + x, height + y);
+    glVertex2f(x, height + y);
+}
+
 int main(void)
 {
+    DrawableContainer container;
+
     PrimitiveBatch<Vertex> batch(4000, 6000);
     Vertex* vertices1 = batch.WriteTriangle();
     Vertex* vertices2 = batch.WriteTriangle();
@@ -130,8 +53,6 @@ int main(void)
     printf("%p\n", vertices2);
 
     Texture tex("penis");
-
-    std::vector<Drawable*> drawables;
 
     GLFWwindow* window;
 
@@ -155,7 +76,7 @@ int main(void)
         return -1;
 
     Player player;
-    drawables.push_back(&player);
+    container.Add(&player);
 
     double elapsedTime = 0;
     double lastTime = 0;
@@ -210,35 +131,25 @@ int main(void)
             lastX = x;
             lastY = y;
 
-            for (int i = drawables.size() - 1; i >= 0; i--)
-            {
-                if (drawables[i]->OnMouseMove(x, y))
-                    break;
-            }
+            container.OnMouseMove(x, y);
         }
 
-        for (int i = 0; i < drawables.size(); i++)
-        {
-            drawables[i]->Update(delta);
-            drawables[i]->Render();
-        }
+        container.Update(delta);
+        container.Render();
 
         Vertex* tri = batch.WriteTriangle();
-        Log("Test", LogLevel::Info);
+        //Log("Test", LogLevel::Info);
         //printf("%p\n", tri);
 
         batch.Render();
 
-        glBegin(GL_TRIANGLES);
-        /*
-        glVertex2f(-0.5f, -0.5f);
-        glVertex2f(0.5f, -0.5f);
-        glVertex2f(0.0, 0.5f);
-        */
-
-        glVertex2f(x, y);
-        glVertex2f(50 + x, y);
-        glVertex2f(25 + x, 50 + y);
+        glBegin(GL_QUADS);
+        for (int i = 0; i < 100000; i++)
+        {
+            auto spawnX = rand() % 1280;
+            auto spawnY = rand() & 720;
+            drawQuad(spawnX, spawnY, 2, 2);
+        }
 
         glEnd();
 
