@@ -1,10 +1,10 @@
 #pragma once
-#include "GLHandle.h"
+#include "GLObject.h"
 #include <GL/glew.h>
 
 template<typename T>
 class GLBuffer :
-    public GLHandle
+    public GLObject
 {
     unsigned int target, usage;
     unsigned int typeSize;

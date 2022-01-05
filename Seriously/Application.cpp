@@ -2,93 +2,10 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <vector>
-#include "GLBuffer.h"
-
-class GLObject {
-protected:
-    unsigned int handle;
-
-    virtual void initialize() abstract;
-    virtual void bind(int slot = 0) abstract;
-    virtual void release() abstract;
-
-public:
-    /// <summary>
-    /// Bind an object
-    /// </summary>
-    /// <param name="slot">The slot to bind the object to, only used for textures</param>
-    void Bind(int slot = 0) {
-        if (IsInitialized())
-            bind();
-        else
-            initialize();
-    }
-
-    bool IsInitialized() {
-        return handle != 0;
-    }
-
-    void Release() {
-        if (IsInitialized())
-            release();
-
-        //_ASSERT(IsInitialized);
-    }
-
-    ~GLObject() {
-        Release();
-    }
-};
-
-template<typename T>
-class Buffer : public GLObject {
-    unsigned int target, usage;
-    unsigned int typeSize;
-    unsigned int capacity;
-
-public:
-    Buffer(unsigned int target, unsigned int usage, unsigned int capacity)
-    {
-        this->target = target;
-        this->usage = usage;
-        this->capacity = capacity;
-
-        typeSize = sizeof(T);
-    }
-
-    void UploadData(const T* data, int offset, int length) {
-        Bind();
-        glBufferSubData(target, offset, length * typeSize, data);
-    }
-
-    unsigned int GetCapacity() { return capacity; }
-
-    void Resize(int newCapacity) {
-        if (IsInitialized()) {
-            bind();
-            glBufferData(target, newCapacity * typeSize, nullptr, usage);
-        }
-
-        this->capacity = newCapacity;
-    }
-
-private:
-    void release() {
-        glDeleteBuffers(1, &handle);
-        handle = 0;
-    }
-
-    void bind(int slot = 0) {
-        glBindBuffer(target, handle);
-    }
-
-    void initialize() {
-        glGenBuffers(1, &handle);
-        bind();
-
-        glBufferData(target, capacity * typeSize, nullptr, usage);
-    }
-};
+#include "PrimitiveBatch.h"
+#include "glm.hpp"
+#include "gtc/matrix_transform.hpp"
+#include "Log.h"
 
 class Texture : public GLObject {
     const char* filename;
@@ -171,119 +88,6 @@ public:
 };
 
 template<typename T>
-class PrimitiveBatch {
-private:
-    T* vertexPool;
-    uint32_t* indexPool;
-
-    Buffer<T> *vertexBuffer;
-    Buffer<uint32_t> *indexBuffer;
-
-    uint32_t VertexRenderCount, IndexRenderCount;
-
-public:
-    PrimitiveBatch(uint32_t vertexCount, uint32_t indexCount)
-    {
-        vertexBuffer = new Buffer<T>(GL_ARRAY_BUFFER, GL_DYNAMIC_DRAW, vertexCount);
-        indexBuffer = new Buffer<uint32_t>(GL_ELEMENT_ARRAY_BUFFER, GL_DYNAMIC_DRAW, indexCount);
-
-        vertexPool = new T[vertexCount];
-        indexPool = new uint32_t[indexCount];
-
-        VertexRenderCount = 0;
-        IndexRenderCount = 0;
-    }
-
-    /// <summary>
-    /// Pls dont write more than 3 vertices uwu
-    /// </summary>
-    /// <param name=""></param>
-    /// <returns></returns>
-    T* WriteTriangle() {
-        indexPool[IndexRenderCount++] = VertexRenderCount + 0;
-        indexPool[IndexRenderCount++] = VertexRenderCount + 1;
-        indexPool[IndexRenderCount++] = VertexRenderCount + 2;
-
-        VertexRenderCount += 3;
-        //Return the ptr to the vertexpool starting from our current writing position
-        return vertexPool + VertexRenderCount - 3;
-    }
-
-    T* WriteQuad() {
-        indexPool[IndexRenderCount++] = VertexRenderCount + 0;
-        indexPool[IndexRenderCount++] = VertexRenderCount + 1;
-        indexPool[IndexRenderCount++] = VertexRenderCount + 2;
-
-        indexPool[IndexRenderCount++] = VertexRenderCount + 0;
-        indexPool[IndexRenderCount++] = VertexRenderCount + 2;
-        indexPool[IndexRenderCount++] = VertexRenderCount + 3;
-
-        VertexRenderCount += 4;
-        return vertexPool + VertexRenderCount - 4;
-    }
-
-    T* WriteTriangleStrip(int pointCount) {
-        if (pointCount < 3)
-            throw std::exception("Point count can't be less than 3");
-
-        //First triangle
-        indexPool[IndexRenderCount++] = VertexRenderCount + 0;
-        indexPool[IndexRenderCount++] = VertexRenderCount + 1;
-        indexPool[IndexRenderCount++] = VertexRenderCount + 2;
-
-        for (int i = 3; i < pointCount; i++)
-        {
-            indexPool[IndexRenderCount++] = VertexRenderCount - 2 + i;
-            indexPool[IndexRenderCount++] = VertexRenderCount - 1 + i;
-            indexPool[IndexRenderCount++] = VertexRenderCount + 0 + i;
-        }
-
-        VertexRenderCount += pointCount;
-        return vertexPool + VertexRenderCount - pointCount;
-    }
-
-    T* WriteTriangleFan(int pointCount) {
-        if (pointCount < 3)
-            throw std::exception("Point count can't be less than 3");
-
-        //First triangle
-        indexPool[IndexRenderCount++] = VertexRenderCount + 0;
-        indexPool[IndexRenderCount++] = VertexRenderCount + 1;
-        indexPool[IndexRenderCount++] = VertexRenderCount + 2;
-
-        for (int i = 3; i < pointCount; i++)
-        {
-            indexPool[IndexRenderCount++] = VertexRenderCount + 0;
-            indexPool[IndexRenderCount++] = VertexRenderCount - 1 + i;
-            indexPool[IndexRenderCount++] = VertexRenderCount + 0 + i;
-        }
-
-        VertexRenderCount += pointCount;
-        return vertexPool + VertexRenderCount - pointCount;
-    }
-
-    void Render() {
-        vertexBuffer->UploadData(vertexPool, 0, VertexRenderCount);
-        indexBuffer->UploadData(indexPool, 0, IndexRenderCount);
-
-        glDrawElements(GL_TRIANGLES, IndexRenderCount, GL_UNSIGNED_INT, nullptr);
-
-        //Fill the vertexpool with 0's not neccersary
-        memset(vertexPool, 0, VertexRenderCount * sizeof(T));
-        VertexRenderCount = 0;
-        IndexRenderCount = 0;
-
-    }
-
-    ~PrimitiveBatch() {
-        delete vertexPool;
-        delete indexPool;
-        delete vertexBuffer;
-        delete indexBuffer;
-    }
-};
-
-template<typename T>
 class VertexArray : public GLObject {
 public:
     VertexArray()
@@ -310,21 +114,10 @@ private:
 
 struct Vertex {
 public:
-    float X, Y;
-    float TexX, TexY;
-    float R, G, B, A;
+    glm::vec2 Position;
+    glm::vec2 TextureCoord;
+    glm::vec4 Color;
 };
-
-char* splitString(const char* input, int inputLen, int startIndex) {
-    int newLen = inputLen - startIndex;
-    char* newString = new char[newLen + 1];
-
-    memcpy(newString, &input[startIndex], newLen);
-
-    newString[newLen] = '\0';
-
-    return newString;
-}
 
 int main(void)
 {
@@ -387,6 +180,12 @@ int main(void)
         glfwGetWindowSize(window, &windowWidth, &windowHeight);
         glViewport(0, 0, windowWidth, windowHeight);
 
+        glm::mat4 projection = glm::ortho(0, windowWidth, windowHeight, 0, -1, 1);
+
+        glMatrixMode(GL_PROJECTION);
+        glLoadIdentity();
+        glOrtho(0, windowWidth, windowHeight, 0, -1, 1);
+        
         double time = glfwGetTime();
 
         double delta = time - lastTime;
@@ -424,24 +223,23 @@ int main(void)
             drawables[i]->Render();
         }
 
-        auto tri = batch.WriteTriangle();
-        tri->X = -0.5f;
-        tri->Y = -0.5f;
-        ++tri;
-
-        tri->X = 0.5f;
-        tri->Y = -0.5f;
-        ++tri;
-
-        tri->X = 0.0f;
-        tri->Y = 0.5f;
+        Vertex* tri = batch.WriteTriangle();
+        Log("Test", LogLevel::Info);
+        //printf("%p\n", tri);
 
         batch.Render();
 
         glBegin(GL_TRIANGLES);
+        /*
         glVertex2f(-0.5f, -0.5f);
         glVertex2f(0.5f, -0.5f);
-        glVertex2f(0.0f, 0.5f);
+        glVertex2f(0.0, 0.5f);
+        */
+
+        glVertex2f(x, y);
+        glVertex2f(50 + x, y);
+        glVertex2f(25 + x, 50 + y);
+
         glEnd();
 
         /* Swap front and back buffers */

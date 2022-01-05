@@ -1,8 +1,8 @@
 #pragma once
-class GLHandle
+class GLObject
 {
 protected:
-    unsigned int handle;
+    unsigned int handle = 0;
 
     virtual void initialize() abstract;
     virtual void bind(int slot = 0) abstract;
@@ -31,7 +31,7 @@ public:
         //_ASSERT(IsInitialized);
     }
 
-    ~GLHandle() {
+    ~GLObject() {
         Release();
     }
 };
