@@ -155,6 +155,7 @@
     <ClInclude Include="Log.h" />
     <ClInclude Include="PrimitiveBatch.h" />
     <ClInclude Include="Shader.h" />
+    <ClInclude Include="stb_image.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="VertexArray.h" />
   </ItemGroup>

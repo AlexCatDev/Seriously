@@ -1,11 +1,13 @@
 #pragma once
 #include "GLObject.h"
 #include "GL/glew.h"
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 class Texture : public GLObject {
     const char* filename;
-    unsigned int width, height;
-    unsigned int internalFormat, format, pixelType;
+    int width, height;
+    int internalFormat, format, pixelType;
 
 public:
     Texture(int width, int height,
@@ -46,13 +48,18 @@ private:
             glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, pixelType, nullptr);
         else {
             //Load image from file
-            width = 69;
-            height = 1337;
-            void* data = nullptr;
+            auto pixels = stbi_load(filename, &width, &height, nullptr, 4);
+
+            if (pixels == nullptr) {
+                Log("Image pixels was nulptr", LogLevel::Error);
+                return;
+            }
 
             //Upload
-            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, data);
-        }
+            glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 
+            //Free
+            stbi_image_free(pixels);
+        }
     }
 };
