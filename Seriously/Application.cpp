@@ -11,9 +11,16 @@
 #include "VertexArray.h"
 #include "Shader.h"
 
+struct Vertex {
+public:
+    glm::vec2 Position;
+    glm::vec2 TextureCoord;
+    glm::vec4 Color;
+};
+
 class Player : public Drawable {
 public:
-    void Render() {
+    void Render(Graphics& g) {
         
     }
 
@@ -28,11 +35,59 @@ public:
     }
 };
 
-struct Vertex {
+class BouncingCube {
+    glm::vec2 pos;
+    glm::vec2 vel;
+
 public:
-    glm::vec2 Position;
-    glm::vec2 TextureCoord;
-    glm::vec4 Color;
+    BouncingCube()
+    {
+        pos.x = rand() % 1280;
+        pos.y = rand() % 720;
+
+        vel.x = rand() % 500;
+        vel.y = rand() % 500;
+    }
+
+    void Render(PrimitiveBatch<Vertex>& batch) {
+        auto quad = batch.WriteQuad();
+
+        quad[0].Position.x = pos.x;
+        quad[0].Position.y = pos.y;
+
+        quad[1].Position.x = pos.x + 2;
+        quad[1].Position.y = pos.y;
+
+        quad[2].Position.x = pos.x + 2;
+        quad[2].Position.y = pos.y + 2;
+
+        quad[3].Position.x = pos.x;
+        quad[3].Position.y = pos.y + 2;
+    }
+
+    bool OnMouseMove(double x, double y) {
+        return false;
+    }
+
+    void Update(double delta) {
+        pos += vel * (float)delta;
+
+        Clamp(pos.x, 0, 1280);
+        Clamp(pos.y, 0, 720);
+
+        if (pos.x == 1280 || pos.x == 0)
+            vel.x *= -1.0f;
+
+        if (pos.y == 720 || pos.y == 0)
+            vel.y *= -1.0f;
+    }
+
+    void Clamp(float& inValue, float min, float max) {
+        if (inValue > max)
+            inValue = max;
+        else if (inValue < min)
+            inValue = min;
+    }
 };
 
 int main(void)
@@ -47,7 +102,7 @@ int main(void)
     //color
     vao.Add<float>(4);
 
-    PrimitiveBatch<Vertex> batch(4000, 6000);
+    PrimitiveBatch<Vertex> batch(4000000, 6000000);
 
     Texture tex("penis");
     Shader shader("C:\\Users\\user\\Desktop\\test.vert", "C:\\Users\\user\\Desktop\\test.frag");
@@ -75,6 +130,13 @@ int main(void)
 
     Player player;
     container.Add(&player);
+
+    std::vector<BouncingCube*> cubes;
+
+    for (int i = 0; i < 100000; i++)
+    {
+        cubes.push_back(new BouncingCube());
+    }
 
     double elapsedTime = 0;
     double lastTime = 0;
@@ -129,24 +191,35 @@ int main(void)
         }
 
         container.Update(delta);
-        container.Render();
+        //container.Render(nullptr);
 
-        Vertex* quad = batch.WriteQuad();
+        for (int i = 0; i < cubes.size(); i++)
+        {
+            cubes[i]->Update(delta);
+            cubes[i]->Render(batch);
+        }
 
-        quad[0].Position.x = x;
-        quad[0].Position.y = y;
-        quad[0].Color.a = 1.0f;
-        quad[0].Color.r = 1.0f;
+        /*
+        for (int i = 0; i < 100000; i++)
+        {
+            x = 1280.0 / i;
+            y = 720.0 / i;
 
-        quad[1].Position.x = x + 100;
-        quad[1].Position.y = y;
+            Vertex* quad = batch.WriteQuad();
 
-        quad[2].Position.x = x + 100;
-        quad[2].Position.y = y + 100;
+            quad[0].Position.x = x;
+            quad[0].Position.y = y;
 
-        quad[3].Position.x = x;
-        quad[3].Position.y = y + 100;
+            quad[1].Position.x = x + 2;
+            quad[1].Position.y = y;
 
+            quad[2].Position.x = x + 2;
+            quad[2].Position.y = y + 2;
+
+            quad[3].Position.x = x;
+            quad[3].Position.y = y + 2;
+        }
+        */
         //Log("Test", LogLevel::Info);
         //printf("%p\n", tri);
 

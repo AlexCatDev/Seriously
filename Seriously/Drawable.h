@@ -1,6 +1,6 @@
 #pragma once
 #include <vector>
-
+#include "Graphics.h"
 
 class Drawable {
 public:
@@ -8,7 +8,7 @@ public:
     int Layer = 0;
 
     virtual void Update(double delta) abstract;
-    virtual void Render() abstract;
+    virtual void Render(Graphics& g) abstract;
 
     virtual bool OnMouseMove(double x, double y) { return false; }
 };
@@ -67,13 +67,13 @@ public:
         }
     }
 
-    void Render() {
+    void Render(Graphics& g) {
         for (int i = drawables.size() - 1; i >= 0; i--)
         {
             if (drawables[i]->IsDead)
                 continue;
 
-            drawables[i]->Render();
+            drawables[i]->Render(g);
         }
     }
 };
