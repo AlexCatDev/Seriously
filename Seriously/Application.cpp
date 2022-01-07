@@ -8,6 +8,8 @@
 #include "Log.h"
 #include "Drawable.h"
 #include "Texture.h"
+#include "VertexArray.h"
+#include "Shader.h"
 
 class Player : public Drawable {
 public:
@@ -33,26 +35,22 @@ public:
     glm::vec4 Color;
 };
 
-void drawQuad(float x, float y, float width, float height) {
-    glVertex2f(x, y);
-    glVertex2f(width + x, y);
-    glVertex2f(width + x, height + y);
-    glVertex2f(x, height + y);
-}
-
 int main(void)
 {
     DrawableContainer container;
 
+    VertexArray vao;
+    //pos
+    vao.Add<float>(2);
+    //texcoord
+    vao.Add<float>(2);
+    //color
+    vao.Add<float>(4);
+
     PrimitiveBatch<Vertex> batch(4000, 6000);
-    Vertex* vertices1 = batch.WriteTriangle();
-    Vertex* vertices2 = batch.WriteTriangle();
-    Vertex* vertices3 = batch.WriteTriangleFan(3);
-    
-    printf("%p\n", vertices1);
-    printf("%p\n", vertices2);
 
     Texture tex("penis");
+    Shader shader("C:\\Users\\user\\Desktop\\test.vert", "C:\\Users\\user\\Desktop\\test.frag");
 
     GLFWwindow* window;
 
@@ -101,11 +99,7 @@ int main(void)
         glfwGetWindowSize(window, &windowWidth, &windowHeight);
         glViewport(0, 0, windowWidth, windowHeight);
 
-        glm::mat4 projection = glm::ortho(0, windowWidth, windowHeight, 0, -1, 1);
-
-        glMatrixMode(GL_PROJECTION);
-        glLoadIdentity();
-        glOrtho(0, windowWidth, windowHeight, 0, -1, 1);
+        glm::mat4 projection = glm::ortho<float>(0, windowWidth, windowHeight, 0, -1, 1);
         
         double time = glfwGetTime();
 
@@ -137,22 +131,30 @@ int main(void)
         container.Update(delta);
         container.Render();
 
-        Vertex* tri = batch.WriteTriangle();
+        Vertex* quad = batch.WriteQuad();
+
+        quad[0].Position.x = x;
+        quad[0].Position.y = y;
+        quad[0].Color.a = 1.0f;
+        quad[0].Color.r = 1.0f;
+
+        quad[1].Position.x = x + 100;
+        quad[1].Position.y = y;
+
+        quad[2].Position.x = x + 100;
+        quad[2].Position.y = y + 100;
+
+        quad[3].Position.x = x;
+        quad[3].Position.y = y + 100;
+
         //Log("Test", LogLevel::Info);
         //printf("%p\n", tri);
 
+        shader.Bind();
+        shader.SetMatrix("u_Projection", projection);
+
         batch.Render();
-
-        glBegin(GL_QUADS);
-        for (int i = 0; i < 100000; i++)
-        {
-            auto spawnX = rand() % 1280;
-            auto spawnY = rand() & 720;
-            drawQuad(spawnX, spawnY, 2, 2);
-        }
-
-        glEnd();
-
+        vao.Bind();
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
     }

@@ -94,8 +94,8 @@ public:
     }
 
     void Render() {
-        vertexBuffer->UploadData(vertexPool, 0, VertexRenderCount);
         indexBuffer->UploadData(indexPool, 0, IndexRenderCount);
+        vertexBuffer->UploadData(vertexPool, 0, VertexRenderCount);
 
         glDrawElements(GL_TRIANGLES, IndexRenderCount, GL_UNSIGNED_INT, nullptr);
 
@@ -107,8 +107,8 @@ public:
     }
 
     ~PrimitiveBatch() {
-        delete vertexPool;
-        delete indexPool;
+        delete [] vertexPool;
+        delete [] indexPool;
         delete vertexBuffer;
         delete indexBuffer;
     }
