@@ -1,8 +1,10 @@
 #pragma once
 class GLObject
 {
+#define UninitializedHandle -6969
+
 protected:
-    unsigned int handle = 0;
+    unsigned int handle = UninitializedHandle;
 
     virtual void initialize() abstract;
     virtual void bind(int slot = 0) abstract;
@@ -21,7 +23,7 @@ public:
     }
 
     bool IsInitialized() {
-        return handle != 0;
+        return handle != UninitializedHandle;
     }
 
     void Release() {

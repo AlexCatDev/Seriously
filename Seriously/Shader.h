@@ -1,7 +1,7 @@
 #pragma once
 #include "GLObject.h"
-#include <GL/glew.h>
 #include "Log.h"
+#include <GL/glew.h>
 #include <fstream>
 #include <map>
 
@@ -21,6 +21,10 @@ public:
 
 	void SetMatrix(const char* uniformName, glm::mat4& matrix, bool transpose = false) {
 		glUniformMatrix4fv(getLocation(uniformName), 1, transpose, &matrix[0][0]);
+	}
+
+	void SetIntArray(const char* uniformName, const int* arr, int length) {
+		glUniform1iv(getLocation(uniformName), length, arr);
 	}
 private:
 	GLint getLocation(const char* name) {
@@ -107,7 +111,7 @@ private:
 
 	void release() {
 		glDeleteProgram(handle);
-		handle = 0;
+		handle = UninitializedHandle;
 	}
 };
 

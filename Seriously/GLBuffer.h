@@ -39,7 +39,7 @@ public:
 private:
     void release() {
         glDeleteBuffers(1, &handle);
-        handle = 0;
+        handle = UninitializedHandle;
     }
 
     void bind(int slot = 0) {

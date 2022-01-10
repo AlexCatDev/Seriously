@@ -1,5 +1,6 @@
 #pragma once
 #include <vector>
+#include <algorithm>
 #include "Graphics.h"
 
 class Drawable {
@@ -37,6 +38,20 @@ public:
         }
     }
 
+    /*
+    template<typename T>
+    void Get() {
+        static_assert(std::is_base_of<Drawable, T>::value, "Skal ligesom være en drawable");
+
+        for (int i = 0; i < drawables.size(); i++)
+        {
+            if (dynamic_cast<T*>(drawables[i]) != nullptr) {
+                drawables[i]->IsDead = true;
+            }
+        }
+    }
+    */
+
     void OnMouseMove(float x, float y) {
         for (int i = drawables.size() - 1; i >= 0; i--)
         {
@@ -60,10 +75,18 @@ public:
         }
 
         if (requireSorting) {
+            /*
+            std::sort(drawables.begin(), drawables.end(), [](int p) {
+                return true; 
+
+            });
+            */
+            /*
             std::qsort(drawables[0], drawables.size(), sizeof(Drawable*),
                 [](const void* x, const void* y) {
                     return ((Drawable*)x)->Layer - ((Drawable*)y)->Layer;
                 });
+                */
         }
     }
 

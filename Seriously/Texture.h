@@ -10,6 +10,9 @@ class Texture : public GLObject {
     int internalFormat, format, pixelType;
 
 public:
+    const static Texture Square;
+    const static Texture Circle;
+    
     Texture(int width, int height,
         unsigned int internalFormat = GL_RGBA, unsigned int format = GL_RGBA, unsigned int pixelType = GL_UNSIGNED_BYTE)
     {
@@ -32,7 +35,7 @@ public:
 private:
     void release() {
         glDeleteTextures(1, &handle);
-        handle = 0;
+        handle = UninitializedHandle;
     }
 
     void bind(int slot = 0) {
@@ -44,9 +47,18 @@ private:
         glGenTextures(1, &handle);
         bind();
 
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+
         if (filename == nullptr)
             glTexImage2D(GL_TEXTURE_2D, 0, internalFormat, width, height, 0, format, pixelType, nullptr);
         else {
+            Log("Loading image from file", LogLevel::Info);
+            Log(filename, LogLevel::Info);
+
             //Load image from file
             auto pixels = stbi_load(filename, &width, &height, nullptr, 4);
 
@@ -63,3 +75,6 @@ private:
         }
     }
 };
+
+const Texture Texture::Square { "C:\\Users\\user\\Desktop\\CSharp\\Easy2D\\Easy2D\\Textures\\square.png" };
+const Texture Texture::Circle { "C:\\Users\\user\\Desktop\\CSharp\\Easy2D\\Easy2D\\Textures\\circle.png" };

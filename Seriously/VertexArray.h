@@ -1,6 +1,7 @@
 #pragma once
 #include "GLObject.h"
 #include "GL/glew.h"
+#include <vector>
 
 class VertexArray : public GLObject {
     struct VertexMember
@@ -45,6 +46,6 @@ private:
 
     void release() {
         glDeleteVertexArrays(1, &handle);
-        handle = 0;
+        handle = UninitializedHandle;
     }
 };

@@ -1,5 +1,6 @@
 #pragma once
 #include "GLBuffer.h"
+#include "Log.h"
 
 template<typename T>
 class PrimitiveBatch {
@@ -12,7 +13,31 @@ private:
 
     uint32_t VertexRenderCount, IndexRenderCount;
 
+    void ensureCapacity(int vertexCount, int indexCount)
+    {
+        //Index pool and indexbuffer has same length, and im lazy 
+        if (IndexRenderCount + indexCount > indexBuffer->GetCapacity())
+        {
+            Render();
+            Log("IndexBuffer ran out of space, so the whole batch has been FLUSHED", LogLevel::Warning);
+            return;
+        }
+
+        //same as above
+        if (VertexRenderCount + vertexCount > vertexBuffer->GetCapacity())
+        {
+            Render();
+            Log("VertexBuffer ran out of space, so the whole batch ha been FLUSHED", LogLevel::Warning);
+            return;
+        }
+    }
 public:
+    int GetPendingTriangles() {
+        return IndexRenderCount / 3;
+    }
+
+    bool ShouldZeroBuffer = true;
+
     PrimitiveBatch(uint32_t vertexCount, uint32_t indexCount)
     {
         vertexBuffer = new GLBuffer<T>(GL_ARRAY_BUFFER, GL_DYNAMIC_DRAW, vertexCount);
@@ -31,24 +56,30 @@ public:
     /// <param name=""></param>
     /// <returns></returns>
     T* WriteTriangle() {
-        indexPool[IndexRenderCount++] = VertexRenderCount + 0;
-        indexPool[IndexRenderCount++] = VertexRenderCount + 1;
-        indexPool[IndexRenderCount++] = VertexRenderCount + 2;
+        ensureCapacity(3, 3);
 
+        indexPool[IndexRenderCount + 0] = VertexRenderCount + 0;
+        indexPool[IndexRenderCount + 1] = VertexRenderCount + 1;
+        indexPool[IndexRenderCount + 2] = VertexRenderCount + 2;
+
+        IndexRenderCount += 3;
         VertexRenderCount += 3;
         //Return the ptr to the vertexpool starting from our current writing position
         return vertexPool + VertexRenderCount - 3;
     }
 
     T* WriteQuad() {
-        indexPool[IndexRenderCount++] = VertexRenderCount + 0;
-        indexPool[IndexRenderCount++] = VertexRenderCount + 1;
-        indexPool[IndexRenderCount++] = VertexRenderCount + 2;
+        ensureCapacity(4, 6);
 
-        indexPool[IndexRenderCount++] = VertexRenderCount + 0;
-        indexPool[IndexRenderCount++] = VertexRenderCount + 2;
-        indexPool[IndexRenderCount++] = VertexRenderCount + 3;
+        indexPool[IndexRenderCount + 0] = VertexRenderCount + 0;
+        indexPool[IndexRenderCount + 1] = VertexRenderCount + 1;
+        indexPool[IndexRenderCount + 2] = VertexRenderCount + 2;
 
+        indexPool[IndexRenderCount + 3] = VertexRenderCount + 0;
+        indexPool[IndexRenderCount + 4] = VertexRenderCount + 2;
+        indexPool[IndexRenderCount + 5] = VertexRenderCount + 3;
+
+        IndexRenderCount += 3;
         VertexRenderCount += 4;
         return vertexPool + VertexRenderCount - 4;
     }
@@ -57,16 +88,20 @@ public:
         if (pointCount < 3)
             throw std::exception("Point count can't be less than 3");
 
-        //First triangle
-        indexPool[IndexRenderCount++] = VertexRenderCount + 0;
-        indexPool[IndexRenderCount++] = VertexRenderCount + 1;
-        indexPool[IndexRenderCount++] = VertexRenderCount + 2;
+        ensureCapacity(pointCount, (pointCount - 2) * 3);
 
+        //First triangle
+        indexPool[IndexRenderCount + 0] = VertexRenderCount + 0;
+        indexPool[IndexRenderCount + 1] = VertexRenderCount + 1;
+        indexPool[IndexRenderCount + 2] = VertexRenderCount + 2;
+
+        IndexRenderCount += 3;
         for (int i = 3; i < pointCount; i++)
         {
-            indexPool[IndexRenderCount++] = VertexRenderCount - 2 + i;
-            indexPool[IndexRenderCount++] = VertexRenderCount - 1 + i;
-            indexPool[IndexRenderCount++] = VertexRenderCount + 0 + i;
+            indexPool[IndexRenderCount + 0] = VertexRenderCount - 2 + i;
+            indexPool[IndexRenderCount + 1] = VertexRenderCount - 1 + i;
+            indexPool[IndexRenderCount + 2] = VertexRenderCount + 0 + i;
+            IndexRenderCount += 3;
         }
 
         VertexRenderCount += pointCount;
@@ -77,16 +112,20 @@ public:
         if (pointCount < 3)
             throw std::exception("Point count can't be less than 3");
 
-        //First triangle
-        indexPool[IndexRenderCount++] = VertexRenderCount + 0;
-        indexPool[IndexRenderCount++] = VertexRenderCount + 1;
-        indexPool[IndexRenderCount++] = VertexRenderCount + 2;
+        ensureCapacity(pointCount, (pointCount - 2) * 3);
 
+        //First triangle
+        indexPool[IndexRenderCount + 0] = VertexRenderCount + 0;
+        indexPool[IndexRenderCount + 1] = VertexRenderCount + 1;
+        indexPool[IndexRenderCount + 2] = VertexRenderCount + 2;
+
+        IndexRenderCount += 3;
         for (int i = 3; i < pointCount; i++)
         {
-            indexPool[IndexRenderCount++] = VertexRenderCount + 0;
-            indexPool[IndexRenderCount++] = VertexRenderCount - 1 + i;
-            indexPool[IndexRenderCount++] = VertexRenderCount + 0 + i;
+            indexPool[IndexRenderCount + 0] = VertexRenderCount + 0;
+            indexPool[IndexRenderCount + 1] = VertexRenderCount - 1 + i;
+            indexPool[IndexRenderCount + 2] = VertexRenderCount + 0 + i;
+            IndexRenderCount += 3;
         }
 
         VertexRenderCount += pointCount;
@@ -100,7 +139,9 @@ public:
         glDrawElements(GL_TRIANGLES, IndexRenderCount, GL_UNSIGNED_INT, nullptr);
 
         //Fill the vertexpool with 0's not neccersary
-        memset(vertexPool, 0, VertexRenderCount * sizeof(T));
+        if(ShouldZeroBuffer)
+            memset(vertexPool, 0, VertexRenderCount * sizeof(T));
+
         VertexRenderCount = 0;
         IndexRenderCount = 0;
 
