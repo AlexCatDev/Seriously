@@ -1,4 +1,5 @@
 #pragma once
+
 class GLObject
 {
 #define UninitializedHandle -6969
@@ -29,8 +30,6 @@ public:
     void Release() {
         if (IsInitialized())
             release();
-
-        //_ASSERT(IsInitialized);
     }
 
     ~GLObject() {

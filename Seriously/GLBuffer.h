@@ -1,5 +1,6 @@
 #pragma once
 #include "GLObject.h"
+#include "Log.h"
 #include <GL/glew.h>
 
 template<typename T>
@@ -11,6 +12,9 @@ class GLBuffer :
     unsigned int capacity;
 
 public:
+    //Delete copy constructor?
+    GLBuffer(const GLBuffer &buffer) = delete;
+
     GLBuffer(unsigned int target, unsigned int usage, unsigned int capacity)
     {
         this->target = target;

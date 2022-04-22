@@ -88,6 +88,11 @@ private:
 		glAttachShader(handle, shaderID);
 
 		glLinkProgram(handle);
+
+		glGetShaderiv(handle, GL_LINK_STATUS, &didCompile);
+		if (didCompile == GL_FALSE) {
+			Log("Failed to link!", LogLevel::Error);
+		}
 	}
 
 	void bind(int slot = 0) {

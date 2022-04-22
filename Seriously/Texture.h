@@ -13,6 +13,8 @@ public:
     const static Texture Square;
     const static Texture Circle;
     
+    Texture(const Texture& texture) = delete;
+
     Texture(int width, int height,
         unsigned int internalFormat = GL_RGBA, unsigned int format = GL_RGBA, unsigned int pixelType = GL_UNSIGNED_BYTE)
     {

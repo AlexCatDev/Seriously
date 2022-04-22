@@ -1,34 +1,36 @@
 #pragma once
+#include <vector>
 #include "GLObject.h"
 #include "GL/glew.h"
-#include <vector>
 
+struct VertexMember
+{
+    GLenum Type;
+    int Count;
+    bool Normalized;
+};
+
+//Type constraint? wtf
+//How to use?
+template<typename T>
 class VertexArray : public GLObject {
-    struct VertexMember
-    {
-        int Count;
-        GLenum Type;
-        bool Normalized;
-        int Offset;
-    };
-
-private:
-    std::vector<VertexMember> members;
     int totalSize = 0;
-public:
-    //what why, i kinda understand but, why is it like this
-    template<typename T>
-    void Add(int count) {
-        static_assert(false);
+    std::vector<VertexMember> layout;
+    GLBuffer<T>* vertexBuffer;
+
+    //Optimization hashmap instead of this when i know how to use them lol
+    int getTypeSize(GLenum type) {
+        switch (type) {
+            case GL_FLOAT:
+                return sizeof(float);
+            break;
+
+            default:
+                throw std::exception("Type not implemented :(");
+                break;
+        }
     }
 
-    template<>
-    void Add<float>(int count) {
-        members.push_back({ count, GL_FLOAT, false, totalSize });
-        totalSize += sizeof(GLfloat) * count;
-    }
-
-private:
     void bind(int slot = 0) {
         glBindVertexArray(handle);
     }
@@ -37,10 +39,16 @@ private:
         glGenVertexArrays(1, &handle);
         bind();
         
-        for (int i = 0; i < members.size(); i++)
+        vertexBuffer->Bind();
+
+        int offset = 0;
+        int stride = sizeof(T);
+        for (size_t i = 0; i < layout.size(); i++)
         {
             glEnableVertexAttribArray(i);
-            glVertexAttribPointer(i, members[i].Count, members[i].Type, members[i].Normalized, totalSize, (const void*)members[i].Offset);
+            glVertexAttribPointer(i, layout[i].Count, layout[i].Type, layout[i].Normalized, stride, (const void*)offset);
+
+            offset += getTypeSize(layout[i].Type) * layout[i].Count;
         }
     }
 
@@ -48,4 +56,8 @@ private:
         glDeleteVertexArrays(1, &handle);
         handle = UninitializedHandle;
     }
+
+public:
+    VertexArray(std::vector<VertexMember> layout, GLBuffer<T>* vertexBuffer) : layout(layout), vertexBuffer(vertexBuffer) { }
+    VertexArray(const VertexArray& vao) = delete;
 };

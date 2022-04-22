@@ -1,5 +1,6 @@
 #pragma once
 #include "GLBuffer.h"
+#include "VertexArray.h"
 #include "Log.h"
 
 template<typename T>
@@ -8,15 +9,17 @@ private:
     T* vertexPool;
     uint32_t* indexPool;
 
-    GLBuffer<T>* vertexBuffer;
-    GLBuffer<uint32_t>* indexBuffer;
+    GLBuffer<T> vertexBuffer;
+    GLBuffer<uint32_t> indexBuffer;
 
-    uint32_t VertexRenderCount, IndexRenderCount;
+    VertexArray<T> vertexArray;
+
+    uint32_t VertexRenderCount = 0, IndexRenderCount = 0;
 
     void ensureCapacity(int vertexCount, int indexCount)
     {
         //Index pool and indexbuffer has same length, and im lazy 
-        if (IndexRenderCount + indexCount > indexBuffer->GetCapacity())
+        if (IndexRenderCount + indexCount > indexBuffer.GetCapacity())
         {
             Render();
             Log("IndexBuffer ran out of space, so the whole batch has been FLUSHED", LogLevel::Warning);
@@ -24,7 +27,7 @@ private:
         }
 
         //same as above
-        if (VertexRenderCount + vertexCount > vertexBuffer->GetCapacity())
+        if (VertexRenderCount + vertexCount > vertexBuffer.GetCapacity())
         {
             Render();
             Log("VertexBuffer ran out of space, so the whole batch ha been FLUSHED", LogLevel::Warning);
@@ -32,22 +35,27 @@ private:
         }
     }
 public:
-    int GetPendingTriangles() {
+    int GetPendingVertices() const {
+        return VertexRenderCount;
+    }
+
+    int GetPendingIndices() const {
+        return IndexRenderCount;
+    }
+
+    int GetPendingTriangles() const {
         return IndexRenderCount / 3;
     }
 
-    bool ShouldZeroBuffer = true;
+    bool ShouldZeroBuffer = false;
 
-    PrimitiveBatch(uint32_t vertexCount, uint32_t indexCount)
+    PrimitiveBatch(uint32_t vertexCount, uint32_t indexCount, std::vector<VertexMember> vertexLayout) :
+        vertexBuffer(GL_ARRAY_BUFFER, GL_DYNAMIC_DRAW, vertexCount), 
+        indexBuffer(GL_ELEMENT_ARRAY_BUFFER, GL_DYNAMIC_DRAW, indexCount),
+        vertexArray(vertexLayout, &vertexBuffer)
     {
-        vertexBuffer = new GLBuffer<T>(GL_ARRAY_BUFFER, GL_DYNAMIC_DRAW, vertexCount);
-        indexBuffer = new GLBuffer<uint32_t>(GL_ELEMENT_ARRAY_BUFFER, GL_DYNAMIC_DRAW, indexCount);
-
         vertexPool = new T[vertexCount];
         indexPool = new uint32_t[indexCount];
-
-        VertexRenderCount = 0;
-        IndexRenderCount = 0;
     }
 
     /// <summary>
@@ -79,7 +87,7 @@ public:
         indexPool[IndexRenderCount + 4] = VertexRenderCount + 2;
         indexPool[IndexRenderCount + 5] = VertexRenderCount + 3;
 
-        IndexRenderCount += 3;
+        IndexRenderCount += 6;
         VertexRenderCount += 4;
         return vertexPool + VertexRenderCount - 4;
     }
@@ -133,8 +141,10 @@ public:
     }
 
     void Render() {
-        indexBuffer->UploadData(indexPool, 0, IndexRenderCount);
-        vertexBuffer->UploadData(vertexPool, 0, VertexRenderCount);
+        vertexArray.Bind();
+
+        indexBuffer.UploadData(indexPool, 0, IndexRenderCount);
+        vertexBuffer.UploadData(vertexPool, 0, VertexRenderCount);
 
         glDrawElements(GL_TRIANGLES, IndexRenderCount, GL_UNSIGNED_INT, nullptr);
 
@@ -150,7 +160,5 @@ public:
     ~PrimitiveBatch() {
         delete [] vertexPool;
         delete [] indexPool;
-        delete vertexBuffer;
-        delete indexBuffer;
     }
 };

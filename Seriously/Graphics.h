@@ -6,35 +6,63 @@
 #include "PrimitiveBatch.h"
 #include "Shader.h"
 #include "Texture.h"
-#include "VertexArray.h"
 #include "vec2.hpp"
 #include "vec4.hpp"
 
 class Graphics {
 private:
 	struct Vertex {
-		glm::vec2 Position;
-		glm::vec2 TexCoord;
-		glm::vec2 RotationOrigin;
-		glm::vec4 Color;
-		float Rotation;
-		float TextureSlot;
+		glm::vec2 Position { 0,0 };
+		glm::vec2 TexCoord { 0,0 };
+		glm::vec2 RotationOrigin { 0,0 };
+		glm::vec4 Color { 0,0,0,0 };
+		float Rotation = 0;
+		float TextureSlot = 0;
 	};
 
-	Shader* shader;
-	VertexArray vertexArray;
+	Shader shader;
+
+	int slots[16]{0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
 
 	std::map<Texture*, int> lol;
 
 	int bindSlotIndex = 0;
 
-	//hva
-	int getTextureSlot(const Texture* texture) {
+	void convertToRadians(float& degrees) {
+		degrees = degrees * 0.017453292519943295769236907684886;
+	}
+
+	void mapRange(float& value, float fromSource, float toSource, float fromTarget, float toTarget) {
+		value = (value - fromSource) / (toSource - fromSource) * (toTarget - fromTarget) + fromTarget;
+	}
+
+	float mapRange(float value, float fromSource, float toSource, float fromTarget, float toTarget) {
+		return value = (value - fromSource) / (toSource - fromSource) * (toTarget - fromTarget) + fromTarget;
+	}
+
+public:
+	PrimitiveBatch<Vertex> Batcher;
+	glm::mat4 Projection;
+
+	Graphics() :
+		shader("C:\\Users\\user\\Desktop\\Default.vert", "C:\\Users\\user\\Desktop\\Default.frag"),
+		Batcher(400000, 600000,
+		{
+			{ GL_FLOAT, 2, false },
+			{ GL_FLOAT, 2, false },
+			{ GL_FLOAT, 2, false },
+			{ GL_FLOAT, 4, false },
+			{ GL_FLOAT, 1, false },
+			{ GL_FLOAT, 1, false }
+		}),
+		Projection() { }
+
+	int GetTextureSlot(const Texture* texture) {
 		if (texture == nullptr)
 			texture = &Texture::Square;
 
 		auto p = lol.find((Texture*)texture);
-		
+
 		//Not in the list
 		if (p == lol.end()) {
 			int slotToAdd = bindSlotIndex;
@@ -49,54 +77,13 @@ private:
 		return p->second;
 	}
 
-	void convertToRadians(float& degrees) {
-		#define PI 3.141592653589793238463
-
-		degrees = degrees * 0.017453292519943295769236907684886;
-		//degrees = (degrees * PI) / 180;
-	}
-
-	void mapRange(float& value, float fromSource, float toSource, float fromTarget, float toTarget) {
-		value = (value - fromSource) / (toSource - fromSource) * (toTarget - fromTarget) + fromTarget;
-	}
-
-	float mapRange(float value, float fromSource, float toSource, float fromTarget, float toTarget) {
-		return value = (value - fromSource) / (toSource - fromSource) * (toTarget - fromTarget) + fromTarget;
-	}
-
-#define mapR(dest, valueSource, fromSource, toSource, fromTarget, toTarget) dest = (valueSource - fromSource) / (toSource - fromSource) * (toTarget - fromTarget) + fromTarget
-
-public:
-	PrimitiveBatch<Vertex>* Batcher;
-	glm::mat4 Projection;
-
-	Graphics()
-	{
-		Batcher = new PrimitiveBatch<Vertex>(400000, 600000);
-		//shader = new Shader("Shaders/Default.vert", "Shaders/Default.frag");
-		shader = new Shader("C:\\Users\\user\\Desktop\\Default.vert", "C:\\Users\\user\\Desktop\\Default.frag");
-		
-		//Position
-		vertexArray.Add<float>(2);
-		//TexCoord
-		vertexArray.Add<float>(2);
-		//Rotation Origin
-		vertexArray.Add<float>(2);
-		//Color
-		vertexArray.Add<float>(4);
-		//Rotation
-		vertexArray.Add<float>(1);
-		//TextureSlot
-		vertexArray.Add<float>(1);
-	}
-
 	void DrawRectangle(glm::vec2& position, glm::vec2& size, glm::vec4& color, const Texture* const texture, glm::vec4 textureRect, bool uvNormalized = true, float rotation = 0) {
 		#define texWidth textureRect.z
 		#define texHeight textureRect.w
 
-		auto quad = Batcher->WriteQuad();
+		auto quad = Batcher.WriteQuad();
 
-		auto textureSlot = getTextureSlot(texture);
+		auto textureSlot = GetTextureSlot(texture);
 
 		glm::vec2 rotationOrigin = position;
 
@@ -139,7 +126,7 @@ public:
 		convertToRadians(startAngle);
 		convertToRadians(endAngle);
 
-		int slot = getTextureSlot(texture);
+		int slot = GetTextureSlot(texture);
 
 		glm::vec2 first, second;
 
@@ -152,7 +139,7 @@ public:
 		
 		int vertexCount = segments * 2;
 
-		auto vertices = Batcher->WriteTriangleStrip(vertexCount);
+		auto vertices = Batcher.WriteTriangleStrip(vertexCount);
 
 		for (int i = 0; i < vertexCount; i++)
 		{
@@ -177,14 +164,6 @@ public:
 				}
 				else
 				{
-					/*
-					mapR(firstUV.x, cos * outerRadius, 0, outerRadius, 0.5f, 1);
-					mapR(firstUV.y, sin * outerRadius, 0, outerRadius, 0.5f, 1);
-
-					mapR(secondUV.x, cos * innerRadius, 0, outerRadius, 0.5f, 1);
-					mapR(secondUV.y, sin * innerRadius, 0, outerRadius, 0.5f, 1);
-					*/
-					
 					firstUV.x = mapRange(cos * outerRadius, 0, outerRadius, 0.5f, 1);
 					firstUV.y = mapRange(sin * outerRadius, 0, outerRadius, 0.5f, 1);
 
@@ -199,6 +178,7 @@ public:
 			vertices[i].TextureSlot = slot;
 			vertices[i].Rotation = 0;
 			vertices[i].TexCoord = firstUV;
+			vertices[i].RotationOrigin = { 0, 0 };
 
 			++i;
 
@@ -207,6 +187,7 @@ public:
 			vertices[i].TextureSlot = slot;
 			vertices[i].Rotation = 0;
 			vertices[i].TexCoord = secondUV;
+			vertices[i].RotationOrigin = { 0, 0 };
 
 			theta += stepTheta;
 		}
@@ -214,9 +195,7 @@ public:
 
 	void Render() {
 		//Fix use unordered map
-		//fix?, declare a std::vector or class member array and keep reusing it
-		int* slots = new int[bindSlotIndex];
-		
+
 		auto begin = lol.begin();
 		for (int i = 0; i < bindSlotIndex; i++)
 		{
@@ -225,22 +204,15 @@ public:
 			slots[i] = i;
 		}
 
-		shader->Bind();
+		shader.Bind();
 
-		shader->SetMatrix("u_Projection", Projection);
-		shader->SetIntArray("u_Textures", slots, bindSlotIndex);
+		shader.SetMatrix("u_Projection", Projection);
+		shader.SetIntArray("u_Textures", slots, bindSlotIndex);
 
-		Batcher->Render();
-		vertexArray.Bind();
+		Batcher.Render();
 
 		bindSlotIndex = 0;
 
 		lol.clear();
-		delete[] slots;
-	}
-
-	~Graphics() {
-		delete shader;
-		delete Batcher;
 	}
 };
